@@ -8,6 +8,22 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform-origin: center center;
+        }
+
+    </style>
 
     <link rel="stylesheet" href="main.css"/></head>
 <body>
@@ -39,12 +55,12 @@
 
 
 
+333
 
 
 
 
 
-33
 
 
 
@@ -160,12 +176,8 @@
 
 
 
-
-
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
-
-
+<script src="https://kit.fontawesome.com/a076d05399.js"></script>
 <script>
     // تعريف الرمز النابض (الرمز الذي يظهر على الخريطة ليعكس الحركة)
     const redPulseIcon = L.divIcon({
@@ -185,6 +197,7 @@
     let polyline = null; // لتخزين المسار المتصل بين المواقع
     let isFirstUpdate = true; // لتحديد ما إذا كان هذا هو التحديث الأول للموقع
     let currentPosition = null; // لتخزين الموقع الحالي
+    let isRotationEnabled = true; // لتحديد ما إذا كانت خاصية التدوير مفعلة
 
     // إضافة طبقة الخريطة من OpenStreetMap
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -194,6 +207,7 @@
     // العنصر الذي يعرض السرعة
     const speedElement = document.getElementById('speed');
     const centerButton = document.getElementById('centerButton'); // مرجع لزر التوسيط على الخريطة
+    const rotateButton = document.getElementById('rotateButton'); // مرجع لزر التدوير
 
     // عنصر الخريطة لتطبيق التدوير
     const mapContainer = document.getElementById('map');
@@ -205,7 +219,7 @@
 
     // الحصول على اتجاه الهاتف (يعمل على بعض الأجهزة)
     window.addEventListener('deviceorientation', (event) => {
-        if (event.alpha !== null) {
+        if (isRotationEnabled && event.alpha !== null) {
             rotateMap(event.alpha);
         }
     });
@@ -246,7 +260,7 @@
         }
 
         // تدوير الخريطة بناءً على اتجاه الحركة
-        if (heading !== null) {
+        if (isRotationEnabled && heading !== null) {
             rotateMap(heading);
         }
 
@@ -293,7 +307,7 @@
     }
 
     // إضافة حدث للنقر على زر التوسيط
-    document.getElementById('centerButton').addEventListener('click', focusOnLocation);
+    centerButton.addEventListener('click', focusOnLocation);
 
     // دالة لإنشاء محتوى النافذة المنبثقة
     function createPopupContent(speed, lat, lng) {
@@ -309,8 +323,19 @@
             </div>
         `;
     }
-</script>
 
+    // دالة لتفعيل وإلغاء تفعيل خاصية التدوير
+    function toggleRotation() {
+        isRotationEnabled = !isRotationEnabled;
+        rotateButton.classList.toggle('active', isRotationEnabled);
+        if (!isRotationEnabled) {
+            mapContainer.style.transform = 'rotate(0deg)';
+        }
+    }
+
+    // إضافة حدث للنقر على زر التدوير
+    rotateButton.addEventListener('click', toggleRotation);
+</script>
 
 
 
