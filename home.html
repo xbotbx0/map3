@@ -9,29 +9,7 @@
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-
-
-        <!-- إضافة CSS لتدوير الخريطة -->
-        <style>
-            .leaflet-container:after {
-                content: "↻";
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%) rotate(var(--rotation-deg, 0deg));
-                font-size: 30px;
-                color: #ff0000;
-                opacity: 0.5;
-                pointer-events: none;
-                z-index: 1000;
-            }
-        </style>
-
-
-
-    <link rel="stylesheet" href="main.css"/>
-
-</head>
+    <link rel="stylesheet" href="main.css"/></head>
 <body>
 
 
@@ -47,20 +25,6 @@
             <button class="nav-button" title="تعديل">
                 <i class="fas fa-edit"></i>
             </button>
-
-                        <!-- أزرار التحكم في التدوير -->
-                        <div class="rotation-controls">
-                            <button class="nav-button" id="rotateLeft" title="تدوير لليسار">
-                                <i class="fas fa-undo"></i>
-                            </button>
-                            <button class="nav-button" id="resetRotation" title="إعادة التعيين">
-                                <i class="fas fa-compass"></i>
-                            </button>
-                            <button class="nav-button" id="rotateRight" title="تدوير لليمين">
-                                <i class="fas fa-redo"></i>
-                            </button>
-                        </div>
-
             
             <button class="nav-button" id="centerButton"  title="توسيط الموقع">
                 <i class="fas fa-crosshairs"></i>
@@ -84,11 +48,7 @@
 
 
 
-    <!-- Firebase و Leaflet scripts -->
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-    <!-- إضافة Rotated.js لتدوير العلامات -->
-    <script src="https://unpkg.com/leaflet-rotatedmarker"></script>
- 
+    
 
     <!-- Firebase و Leaflet scripts -->
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
@@ -195,24 +155,17 @@
 <script>
 
     // تعريف الرمز النابض (الرمز الذي يظهر على الخريطة ليعكس الحركة)
-        // تعريف الرمز النابض مع دعم التدوير
-        const redPulseIcon = L.divIcon({
-            className: 'pulsing-marker',
-            iconSize: [20, 20],
-            iconAnchor: [10, 10]
-        });
+    const redPulseIcon = L.divIcon({
+        className: 'pulsing-marker', // تخصيص اسم الكلاس
+        iconSize: [20, 20], // حجم الرمز
+        iconAnchor: [10, 10] // نقطة التثبيت داخل الرمز
+    });
 
-        // تهيئة الخريطة مع دعم التدوير
-        let map = L.map('map', {
-            zoomControl: false,
-            rotate: true, // تفعيل خاصية التدوير
-            rotation: 0 // البدء بزاوية صفر
-        }).setView([24.774265, 46.738586], 13);
+    // تهيئة الخريطة بموقع البداية
+    let map = L.map('map', {
+        zoomControl: false // إيقاف التحكم في التكبير/التصغير الافتراضي
+    }).setView([24.774265, 46.738586], 13); // تعيين الموقع الأولي (خط العرض، خط الطول) ومستوى التكبير
 
-        // متغيرات التدوير
-        let currentRotation = 0;
-        let lastPosition = null;
-        let lastHeading = 0;
     // المتغيرات
     let marker = null; // لتخزين المؤشر
     let path = []; // لتخزين المسار الذي سيتبعه المستخدم
@@ -220,60 +173,23 @@
     let isFirstUpdate = true; // لتحديد ما إذا كان هذا هو التحديث الأول للموقع
     let currentPosition = null; // لتخزين الموقع الحالي
 
-        // إضافة طبقة الخريطة
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap'
-        }).addTo(map);
-        // أحداث التحكم في التدوير
-        document.getElementById('rotateLeft').addEventListener('click', () => adjustRotation(-15));
-        document.getElementById('rotateRight').addEventListener('click', () => adjustRotation(15));
-        document.getElementById('resetRotation').addEventListener('click', resetRotation);
-
-        // وظائف التدوير
-        function adjustRotation(degrees) {
-            currentRotation += degrees;
-            updateRotation();
-        }
-
-        function resetRotation() {
-            currentRotation = 0;
-            updateRotation();
-        }
-
-
-
-        function updateRotation() {
-            // تحديث تدوير الخريطة
-            map.setRotation(currentRotation);
-            
-            // تحديث مؤشر التدوير في CSS
-            document.documentElement.style.setProperty('--rotation-deg', `${-currentRotation}deg`);
-            
-            // تحديث اتجاه العلامة إذا كانت موجودة
-            if (marker) {
-                marker.setRotationAngle(lastHeading - currentRotation);
-            }
-        }
-
+    // إضافة طبقة الخريطة من OpenStreetMap
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
 
     // العنصر الذي يعرض السرعة
     const speedElement = document.getElementById('speed');
     const centerButton = document.getElementById('centerButton'); // مرجع لزر التوسيط على الخريطة
 
-         // دالة تحديث الموقع مع دعم التدوير
-         function updateLocation(position) {
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
-            const speed = position.coords.speed * 3.6;
-            const heading = position.coords.heading || lastHeading;
+    // دالة لتحديث الموقع بشكل مستمر
+    function updateLocation(position) {
+        const lat = position.coords.latitude; // استخراج خط العرض
+        const lng = position.coords.longitude; // استخراج خط الطول
+        const speed = position.coords.speed * 3.6; // تحويل السرعة من متر/ثانية إلى كم/ساعة
 
-            // تحديث اتجاه العلامة بناءً على اتجاه الحركة
-            if (marker) {
-                marker.setRotationAngle(heading - currentRotation);
-            }
+        currentPosition = { lat, lng }; // تحديث الموقع الحالي
 
-            lastHeading = heading;
-            currentPosition = { lat, lng };
         // إذا لم يكن هناك مؤشر، سيتم إضافته على الخريطة
         if (!marker) {
             marker = L.marker([lat, lng], { icon: redPulseIcon }) // إضافة رمز نابض على الخريطة
@@ -304,18 +220,59 @@
         if (typeof window.saveToDB === 'function') {
             window.saveToDB(lat, lng, speed.toFixed(1));
         }
-
-           // التدوير التلقائي بناءً على اتجاه الحركة
-           if (position.coords.speed > 1) {
-                const newRotation = -heading;
-                if (Math.abs(newRotation - currentRotation) > 5) {
-                    currentRotation = newRotation;
-                    updateRotation();
-                }
-            }
     }
 
-    
+
+    // عنصر الخريطة لتطبيق التدوير
+const mapContainer = document.getElementById('map');
+
+// تحديث زاوية الخريطة بناءً على اتجاه المستخدم
+function rotateMap(degrees) {
+    mapContainer.style.transform = `rotate(${360 - degrees}deg)`;
+}
+
+// الحصول على اتجاه الهاتف (يعمل على بعض الأجهزة)
+window.addEventListener('deviceorientation', (event) => {
+    if (event.alpha !== null) {
+        rotateMap(event.alpha);
+    }
+});
+
+// تحديث الاتجاه عند تلقي بيانات الموقع
+function updateLocation(position) {
+    const lat = position.coords.latitude;
+    const lng = position.coords.longitude;
+    const speed = position.coords.speed * 3.6;
+    const heading = position.coords.heading; // اتجاه الحركة بالدرجات
+
+    currentPosition = { lat, lng };
+
+    if (!marker) {
+        marker = L.marker([lat, lng], { icon: redPulseIcon })
+            .bindPopup(createPopupContent(speed, lat, lng))
+            .addTo(map);
+    } else {
+        marker.setLatLng([lat, lng])
+            .setPopupContent(createPopupContent(speed, lat, lng));
+    }
+
+    path.push([lat, lng]);
+    if (polyline) map.removeLayer(polyline);
+    polyline = L.polyline(path, { color: 'red' }).addTo(map);
+
+    speedElement.textContent = `السرعة: ${speed.toFixed(1)} كم/س`;
+
+    if (isFirstUpdate) {
+        map.setView([lat, lng], 13);
+        isFirstUpdate = false;
+    }
+
+    // تدوير الخريطة بناءً على اتجاه الحركة
+    if (heading !== null) {
+        rotateMap(heading);
+    }
+}
+
 
     // دالة لمعالجة الأخطاء في تحديد الموقع
     function handleError(error) {
