@@ -153,7 +153,6 @@
 <!-- Leaflet JS -->
 <!-- Leaflet JS -->
 <script>
-
     // تعريف الرمز النابض (الرمز الذي يظهر على الخريطة ليعكس الحركة)
     const redPulseIcon = L.divIcon({
         className: 'pulsing-marker', // تخصيص اسم الكلاس
@@ -182,11 +181,27 @@
     const speedElement = document.getElementById('speed');
     const centerButton = document.getElementById('centerButton'); // مرجع لزر التوسيط على الخريطة
 
+    // عنصر الخريطة لتطبيق التدوير
+    const mapContainer = document.getElementById('map');
+
+    // تحديث زاوية الخريطة بناءً على اتجاه المستخدم
+    function rotateMap(degrees) {
+        mapContainer.style.transform = `rotate(${360 - degrees}deg)`;
+    }
+
+    // الحصول على اتجاه الهاتف (يعمل على بعض الأجهزة)
+    window.addEventListener('deviceorientation', (event) => {
+        if (event.alpha !== null) {
+            rotateMap(event.alpha);
+        }
+    });
+
     // دالة لتحديث الموقع بشكل مستمر
     function updateLocation(position) {
         const lat = position.coords.latitude; // استخراج خط العرض
         const lng = position.coords.longitude; // استخراج خط الطول
         const speed = position.coords.speed * 3.6; // تحويل السرعة من متر/ثانية إلى كم/ساعة
+        const heading = position.coords.heading; // اتجاه الحركة بالدرجات
 
         currentPosition = { lat, lng }; // تحديث الموقع الحالي
 
@@ -216,63 +231,16 @@
             isFirstUpdate = false;
         }
 
+        // تدوير الخريطة بناءً على اتجاه الحركة
+        if (heading !== null) {
+            rotateMap(heading);
+        }
+
         // حفظ البيانات في Firebase إذا كانت الدالة موجودة
         if (typeof window.saveToDB === 'function') {
             window.saveToDB(lat, lng, speed.toFixed(1));
         }
     }
-
-
-    // عنصر الخريطة لتطبيق التدوير
-const mapContainer = document.getElementById('map');
-
-// تحديث زاوية الخريطة بناءً على اتجاه المستخدم
-function rotateMap(degrees) {
-    mapContainer.style.transform = `rotate(${360 - degrees}deg)`;
-}
-
-// الحصول على اتجاه الهاتف (يعمل على بعض الأجهزة)
-window.addEventListener('deviceorientation', (event) => {
-    if (event.alpha !== null) {
-        rotateMap(event.alpha);
-    }
-});
-
-// تحديث الاتجاه عند تلقي بيانات الموقع
-function updateLocation(position) {
-    const lat = position.coords.latitude;
-    const lng = position.coords.longitude;
-    const speed = position.coords.speed * 3.6;
-    const heading = position.coords.heading; // اتجاه الحركة بالدرجات
-
-    currentPosition = { lat, lng };
-
-    if (!marker) {
-        marker = L.marker([lat, lng], { icon: redPulseIcon })
-            .bindPopup(createPopupContent(speed, lat, lng))
-            .addTo(map);
-    } else {
-        marker.setLatLng([lat, lng])
-            .setPopupContent(createPopupContent(speed, lat, lng));
-    }
-
-    path.push([lat, lng]);
-    if (polyline) map.removeLayer(polyline);
-    polyline = L.polyline(path, { color: 'red' }).addTo(map);
-
-    speedElement.textContent = `السرعة: ${speed.toFixed(1)} كم/س`;
-
-    if (isFirstUpdate) {
-        map.setView([lat, lng], 13);
-        isFirstUpdate = false;
-    }
-
-    // تدوير الخريطة بناءً على اتجاه الحركة
-    if (heading !== null) {
-        rotateMap(heading);
-    }
-}
-
 
     // دالة لمعالجة الأخطاء في تحديد الموقع
     function handleError(error) {
@@ -327,12 +295,16 @@ function updateLocation(position) {
             </div>
         `;
     }
-
 </script>
-
-
 
 
 
 </body>
 </html>
+
+
+
+
+
+
+
