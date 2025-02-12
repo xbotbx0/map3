@@ -22,7 +22,7 @@
             <button class="nav-button" title="القائمة">
                 <i class="fas fa-bars"></i>
             </button>
-            <button class="nav-button" title="تعديل">
+            <button class="nav-button" id="toggleRotationButton" title="تعديل">
                 <i class="fas fa-edit"></i>
             </button>
             
@@ -152,132 +152,161 @@
 <!-- Leaflet JS -->
 <!-- Leaflet JS -->
 <!-- Leaflet JS -->
-<script>
-
-    // تعريف الرمز النابض (الرمز الذي يظهر على الخريطة ليعكس الحركة)
-    const redPulseIcon = L.divIcon({
-        className: 'pulsing-marker', // تخصيص اسم الكلاس
-        iconSize: [20, 20], // حجم الرمز
-        iconAnchor: [10, 10] // نقطة التثبيت داخل الرمز
-    });
-
-    // تهيئة الخريطة بموقع البداية
-    let map = L.map('map', {
-        zoomControl: false // إيقاف التحكم في التكبير/التصغير الافتراضي
-    }).setView([24.774265, 46.738586], 13); // تعيين الموقع الأولي (خط العرض، خط الطول) ومستوى التكبير
-
-    // المتغيرات
-    let marker = null; // لتخزين المؤشر
-    let path = []; // لتخزين المسار الذي سيتبعه المستخدم
-    let polyline = null; // لتخزين المسار المتصل بين المواقع
-    let isFirstUpdate = true; // لتحديد ما إذا كان هذا هو التحديث الأول للموقع
-    let currentPosition = null; // لتخزين الموقع الحالي
-
-    // إضافة طبقة الخريطة من OpenStreetMap
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap'
-    }).addTo(map);
-
-    // العنصر الذي يعرض السرعة
-    const speedElement = document.getElementById('speed');
-    const centerButton = document.getElementById('centerButton'); // مرجع لزر التوسيط على الخريطة
-
-    // دالة لتحديث الموقع بشكل مستمر
-    function updateLocation(position) {
-        const lat = position.coords.latitude; // استخراج خط العرض
-        const lng = position.coords.longitude; // استخراج خط الطول
-        const speed = position.coords.speed * 3.6; // تحويل السرعة من متر/ثانية إلى كم/ساعة
-
-        currentPosition = { lat, lng }; // تحديث الموقع الحالي
-
-        // إذا لم يكن هناك مؤشر، سيتم إضافته على الخريطة
-        if (!marker) {
-            marker = L.marker([lat, lng], { icon: redPulseIcon }) // إضافة رمز نابض على الخريطة
-                .bindPopup(createPopupContent(speed, lat, lng)) // ربط المحتوى بالنوافذ المنبثقة
-                .addTo(map);
-        } else {
-            marker.setLatLng([lat, lng]) // تحديث موقع المؤشر
-                .setPopupContent(createPopupContent(speed, lat, lng)); // تحديث محتوى النافذة المنبثقة
-        }
-
-        // إضافة الإحداثيات إلى المسار
-        path.push([lat, lng]);
-
-        // إذا كان هناك مسار سابق، يتم إزالته
-        if (polyline) map.removeLayer(polyline);
-        polyline = L.polyline(path, {color: 'red'}).addTo(map); // رسم المسار على الخريطة باللون الأحمر
-
-        // تحديث السرعة المعروضة
-        speedElement.textContent = `السرعة: ${speed.toFixed(1)} كم/س`;
-
-        // إذا كان هذا هو التحديث الأول، يتم تكبير الخريطة إلى الموقع الحالي
-        if (isFirstUpdate) {
-            map.setView([lat, lng], 13);
-            isFirstUpdate = false;
-        }
-
-        // حفظ البيانات في Firebase إذا كانت الدالة موجودة
-        if (typeof window.saveToDB === 'function') {
-            window.saveToDB(lat, lng, speed.toFixed(1));
-        }
-    }
-
-    // دالة لمعالجة الأخطاء في تحديد الموقع
-    function handleError(error) {
-        console.error('Geolocation error:', error);
-        speedElement.textContent = 'خطأ في تحديد الموقع انقر للتحديث 🔄!'; // عرض رسالة خطأ
-    }
-
-    // إذا كانت خاصية تحديد الموقع مدعومة، نبدأ في مراقبة الموقع
-    if (navigator.geolocation) {
-        navigator.geolocation.watchPosition(updateLocation, handleError, {
-            enableHighAccuracy: true, // تفعيل الدقة العالية
-            maximumAge: 30000, // الحد الأقصى لعمر البيانات المخزنة
-            timeout: 27000 // الحد الأقصى للوقت قبل انقضاء التحديد
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        // تعريف الرمز النابض (الرمز الذي يظهر على الخريطة ليعكس الحركة)
+        const redPulseIcon = L.divIcon({
+            className: 'pulsing-marker', // تخصيص اسم الكلاس
+            iconSize: [20, 20], // حجم الرمز
+            iconAnchor: [10, 10] // نقطة التثبيت داخل الرمز
         });
-    }
 
-    // تحديث حجم الخريطة عند تغيير حجم الشاشة
-    window.addEventListener('resize', () => {
-        map.invalidateSize(); // تحديث حجم الخريطة
-    });
+        // تهيئة الخريطة بموقع البداية
+        let map = L.map('map', {
+            zoomControl: false // إيقاف التحكم في التكبير/التصغير الافتراضي
+        }).setView([24.774265, 46.738586], 13); // تعيين الموقع الأولي (خط العرض، خط الطول) ومستوى التكبير
 
-    // إضافة تحكم في التكبير/التصغير مع تغيير الموضع إلى أسفل يمين الصفحة
-    L.control.zoom({
-        position: 'bottomright'
-    }).addTo(map);
+        // المتغيرات
+        let marker = null; // لتخزين المؤشر
+        let path = []; // لتخزين المسار الذي سيتبعه المستخدم
+        let polyline = null; // لتخزين المسار المتصل بين المواقع
+        let isFirstUpdate = true; // لتحديد ما إذا كان هذا هو التحديث الأول للموقع
+        let currentPosition = null; // لتخزين الموقع الحالي
+        let isRotationEnabled = false; // لتحديد ما إذا كان التدوير مفعلًا أم لا
 
-    // دالة التوسيط المعدلة التي تركز على الموقع الحالي
-    function focusOnLocation() {
-        if (currentPosition) {
-            map.setView([currentPosition.lat, currentPosition.lng], 13); // توسيط الخريطة على الموقع الحالي
-            marker.openPopup(); // فتح النافذة المنبثقة للمؤشر
-            setTimeout(() => marker.closePopup(), 3000); // إغلاق النافذة المنبثقة بعد 3 ثواني
-        } else {
-            alert("لا يوجد موقع متاح حاليًا!"); // إذا لم يكن هناك موقع متاح، عرض تنبيه
+        // إضافة طبقة الخريطة من OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap'
+        }).addTo(map);
+
+        // العنصر الذي يعرض السرعة
+        const speedElement = document.getElementById('speed');
+        const centerButton = document.getElementById('centerButton'); // مرجع لزر التوسيط على الخريطة
+
+        // دالة لتحديث الموقع بشكل مستمر
+        function updateLocation(position) {
+            const lat = position.coords.latitude; // استخراج خط العرض
+            const lng = position.coords.longitude; // استخراج خط الطول
+            const speed = position.coords.speed * 3.6; // تحويل السرعة من متر/ثانية إلى كم/ساعة
+            const heading = position.coords.heading; // اتجاه الحركة بالدرجات
+
+            currentPosition = { lat, lng }; // تحديث الموقع الحالي
+
+            // إذا لم يكن هناك مؤشر، سيتم إضافته على الخريطة
+            if (!marker) {
+                marker = L.marker([lat, lng], { icon: redPulseIcon }) // إضافة رمز نابض على الخريطة
+                    .bindPopup(createPopupContent(speed, lat, lng)) // ربط المحتوى بالنوافذ المنبثقة
+                    .addTo(map);
+            } else {
+                marker.setLatLng([lat, lng]) // تحديث موقع المؤشر
+                    .setPopupContent(createPopupContent(speed, lat, lng)); // تحديث محتوى النافذة المنبثقة
+            }
+
+            // إضافة الإحداثيات إلى المسار
+            path.push([lat, lng]);
+
+            // إذا كان هناك مسار سابق، يتم إزالته
+            if (polyline) map.removeLayer(polyline);
+            polyline = L.polyline(path, {color: 'red'}).addTo(map); // رسم المسار على الخريطة باللون الأحمر
+
+            // تحديث السرعة المعروضة
+            speedElement.textContent = `السرعة: ${speed.toFixed(1)} كم/س`;
+
+            // إذا كان هذا هو التحديث الأول، يتم تكبير الخريطة إلى الموقع الحالي
+            if (isFirstUpdate) {
+                map.setView([lat, lng], 13);
+                isFirstUpdate = false;
+            }
+
+            // تدوير الخريطة بناءً على اتجاه الحركة إذا كانت خاصية التدوير مفعلة
+            if (isRotationEnabled && heading !== null) {
+                rotateMap(heading);
+            }
+
+            // حفظ البيانات في Firebase إذا كانت الدالة موجودة
+            if (typeof window.saveToDB === 'function') {
+                window.saveToDB(lat, lng, speed.toFixed(1));
+            }
         }
-    }
 
-    // إضافة حدث للنقر على زر التوسيط
-    document.getElementById('centerButton').addEventListener('click', focusOnLocation);
+        // عنصر الخريطة لتطبيق التدوير
+        const mapContainer = document.getElementById('map');
 
-    // دالة لإنشاء محتوى النافذة المنبثقة
-    function createPopupContent(speed, lat, lng) {
-        return `
-            <div dir="rtl" style="text-align: right;">
-                <h4 style="margin: 5px 0;">معلومات المستخدم</h4>
-                <hr style="margin: 5px 0;">
-                <b>الاسم:</b> ${window.userInfo?.username || 'غير معروف'}<br>
-                <b>الإيميل:</b> ${window.userInfo?.email || 'غير معروف'}<br>
-                <b>السرعة:</b> ${speed.toFixed(1)} كم/س<br>
-                <b>الإحداثيات:</b><br>
-                ${lat.toFixed(6)}, ${lng.toFixed(6)}
-            </div>
-        `;
-    }
+        // تحديث زاوية الخريطة بناءً على اتجاه المستخدم
+        function rotateMap(degrees) {
+            mapContainer.style.transform = `rotate(${360 - degrees}deg)`;
+        }
 
-</script>
+        // الحصول على اتجاه الهاتف (يعمل على بعض الأجهزة)
+        window.addEventListener('deviceorientation', (event) => {
+            if (isRotationEnabled && event.alpha !== null) {
+                rotateMap(event.alpha);
+            }
+        });
 
+        // دالة لمعالجة الأخطاء في تحديد الموقع
+        function handleError(error) {
+            console.error('Geolocation error:', error);
+            speedElement.textContent = 'خطأ في تحديد الموقع انقر للتحديث 🔄!'; // عرض رسالة خطأ
+        }
+
+        // إذا كانت خاصية تحديد الموقع مدعومة، نبدأ في مراقبة الموقع
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(updateLocation, handleError, {
+                enableHighAccuracy: true, // تفعيل الدقة العالية
+                maximumAge: 30000, // الحد الأقصى لعمر البيانات المخزنة
+                timeout: 27000 // الحد الأقصى للوقت قبل انقضاء التحديد
+            });
+        }
+
+        // تحديث حجم الخريطة عند تغيير حجم الشاشة
+        window.addEventListener('resize', () => {
+            map.invalidateSize(); // تحديث حجم الخريطة
+        });
+
+        // إضافة تحكم في التكبير/التصغير مع تغيير الموضع إلى أسفل يمين الصفحة
+        L.control.zoom({
+            position: 'bottomright'
+        }).addTo(map);
+
+        // دالة التوسيط المعدلة التي تركز على الموقع الحالي
+        function focusOnLocation() {
+            if (currentPosition) {
+                map.setView([currentPosition.lat, currentPosition.lng], 13); // توسيط الخريطة على الموقع الحالي
+                marker.openPopup(); // فتح النافذة المنبثقة للمؤشر
+                setTimeout(() => marker.closePopup(), 3000); // إغلاق النافذة المنبثقة بعد 3 ثواني
+            } else {
+                alert("لا يوجد موقع متاح حاليًا!"); // إذا لم يكن هناك موقع متاح، عرض تنبيه
+            }
+        }
+
+        // إضافة حدث للنقر على زر التوسيط
+        document.getElementById('centerButton').addEventListener('click', focusOnLocation);
+
+        // دالة لإنشاء محتوى النافذة المنبثقة
+        function createPopupContent(speed, lat, lng) {
+            return `
+                <div dir="rtl" style="text-align: right;">
+                    <h4 style="margin: 5px 0;">معلومات المستخدم</h4>
+                    <hr style="margin: 5px 0;">
+                    <b>الاسم:</b> ${window.userInfo?.username || 'غير معروف'}<br>
+                    <b>الإيميل:</b> ${window.userInfo?.email || 'غير معروف'}<br>
+                    <b>السرعة:</b> ${speed.toFixed(1)} كم/س<br>
+                    <b>الإحداثيات:</b><br>
+                    ${lat.toFixed(6)}, ${lng.toFixed(6)}
+                </div>
+            `;
+        }
+
+        // دالة لتبديل حالة تدوير الخريطة
+        function toggleRotation() {
+            isRotationEnabled = !isRotationEnabled;
+            document.getElementById('toggleRotationButton').textContent = isRotationEnabled ? 'إلغاء تدوير الخريطة' : 'تفعيل تدوير الخريطة';
+        }
+
+        // إضافة حدث للنقر على زر تبديل التدوير
+        document.getElementById('toggleRotationButton').addEventListener('click', toggleRotation);
+    </script>
 
 
 
