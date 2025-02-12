@@ -51,12 +51,23 @@ body {
     transform: scale(1.1);
 }
 
+#map-container {
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    overflow: visible;
+    transform-origin: center center;
+}
+
 #map {
-    position: fixed;
-    top: 0;
-    bottom: 0;
-    width: 100%;
-    z-index: 500;
+    position: absolute;
+    top: 25%;
+    left: 25%;
+    width: 50%;
+    height: 50%;
+    transition: transform 0.3s ease;
 }
 
 #speed {
